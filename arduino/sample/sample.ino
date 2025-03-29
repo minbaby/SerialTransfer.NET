@@ -3,8 +3,9 @@
 // Create a SerialTransfer object
 SerialTransfer myTransfer;
 
-// Define a struct that matches the C# TestStruct
-struct TestStruct {
+// Define a struct that matches the C# TestStruct with proper packing
+struct __attribute__((packed)) TestStruct
+{
   int id;
   float temperature;
   float humidity;
@@ -13,83 +14,99 @@ struct TestStruct {
 
 // Buffer for text messages
 char message[64];
+char response[64];
 
-void setup() {
+void setup()
+{
+
   // Start Serial communication
   Serial.begin(115200);
-  
+
   // Start the SerialTransfer communication
   myTransfer.begin(Serial);
-  
-  // Print startup message to the Arduino Serial Monitor
-  Serial.println("Arduino SerialTransfer Example");
-  Serial.println("Ready to communicate with C# application");
 }
 
-void loop() {
+void loop()
+{
   // Check for new packet
-  if(myTransfer.available()) {
+  if (myTransfer.available())
+  {
     // Get the packet ID
     uint8_t packetId = myTransfer.currentPacketID();
-    
-    // Process based on packet ID
-    switch(packetId) {
-      case 1: // Text message packet
-        // Get the length of the packet
-        uint16_t messageLength = myTransfer.bytesRead;
-        
-        // Copy data to our message buffer (ensure null termination)
-        memset(message, 0, sizeof(message));
-        for(uint16_t i = 0; i < min(messageLength, sizeof(message)-1); i++) {
-          message[i] = myTransfer.packet.rxBuff[i];
+
+    if (packetId == 1)
+    {
+      // Get the length of the packet
+      uint16_t messageLength = myTransfer.bytesRead;
+
+      // Copy data to our message buffer (ensure null termination)
+      memset(message, 0, sizeof(message));
+      for (uint16_t i = 0; i < min(messageLength, sizeof(message) - 1); i++)
+      {
+        message[i] = myTransfer.packet.rxBuff[i];
+      }
+
+      // After acknowledgment, also send back a response message
+      delay(100); // Small delay to separate the transmissions
+
+      // Create a response message
+      char textResponse[64];
+      sprintf(textResponse, "Message '%s' processed by Arduino!", message);
+      uint16_t textRespLen = strlen(textResponse);
+
+      // Send the text response with packet ID 1
+      for (uint16_t i = 0; i < textRespLen; i++)
+      {
+        myTransfer.packet.txBuff[i] = textResponse[i];
+      }
+      myTransfer.sendData(textRespLen, 1);
+    }
+
+    if (packetId == 2)
+    {
+      // Safety check to ensure enough data was received
+      if (myTransfer.bytesRead >= sizeof(TestStruct))
+      {
+
+        // Copy the data manually byte by byte to avoid alignment issues
+        uint8_t *src = myTransfer.packet.rxBuff;
+        uint8_t *dest = (uint8_t *)&testData;
+
+        for (uint16_t i = 0; i < sizeof(TestStruct); i++)
+        {
+          dest[i] = src[i];
         }
-        
-        // Print received message
-        Serial.print("Received text message (Packet ID 1): ");
-        Serial.println(message);
-        
-        // Send a response
-        char response[] = "Message received by Arduino!";
-        uint16_t len = strlen(response);
-        for(uint16_t i = 0; i < len; i++) {
-          myTransfer.packet.txBuff[i] = response[i];
+
+        // After acknowledgment, send a text response with modified ID
+        delay(100); // Small delay to separate the transmissions
+
+        // Create a more detailed response with ID+1
+        char structResponse[64];
+        sprintf(structResponse, "Processed struct with ID=%d", testData.id);
+        uint16_t structRespLen = strlen(structResponse);
+
+        // Send the text response with packet ID 1
+        for (uint16_t i = 0; i < structRespLen; i++)
+        {
+          myTransfer.packet.txBuff[i] = structResponse[i];
         }
-        myTransfer.sendData(len, 1);
-        
-        break;
-        
-      case 2: // Binary data packet (struct)
-        // Use the rxObj() function to extract the struct data
-        myTransfer.rxObj(testData);
-        
-        // Print received data
-        Serial.print("Received binary struct (Packet ID 2): ");
-        Serial.print("ID=");
-        Serial.print(testData.id);
-        Serial.print(", Temp=");
-        Serial.print(testData.temperature);
-        Serial.print("°C, Humidity=");
-        Serial.print(testData.humidity);
-        Serial.print("%, Status=");
-        Serial.println(testData.status);
-        
-        // Modify the struct and send it back
+        myTransfer.sendData(structRespLen, 1);
+
+        // Now send the struct data with increased ID
+        delay(100);
+
+        // Copy the struct to txBuff manually to ensure correct alignment
+        testData.id += 1; // Increase the ID by 1
         testData.temperature += 1.0;
         testData.humidity += 5.0;
         testData.status = 2;
-        
-        // Send the modified struct back
-        myTransfer.sendDatum(testData, sizeof(testData));
-        
-        break;
-        
-      default:
-        Serial.print("Unknown packet ID: ");
-        Serial.println(packetId);
-        break;
+
+        memcpy(myTransfer.packet.txBuff, &testData, sizeof(TestStruct));
+        myTransfer.sendData(sizeof(TestStruct), 2);
+      }
     }
   }
-  
+
   // Add a small delay to prevent overwhelming the serial port
   delay(10);
 }

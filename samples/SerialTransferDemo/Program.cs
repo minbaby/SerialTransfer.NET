@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO.Ports;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using SerialTransfer;
@@ -113,6 +114,10 @@ namespace SerialTransferDemo
                 // Send the packet with ID 1
                 byte bytesSent = transfer.SendData((ushort)messageBytes.Length, 1);
                 Console.WriteLine($"Sent {bytesSent} bytes with packet ID 1");
+                
+                // Wait for response(s)
+                Thread.Sleep(500);
+                ReceiveData(transfer);
             }
             catch (Exception ex)
             {
@@ -197,10 +202,35 @@ namespace SerialTransferDemo
                     Status = 1
                 };
 
-                // Send the struct (packet ID 2)
-                byte bytesSent = transfer.SendDatum(testData);
+                // Calculate the size of the struct
+                int structSize = Marshal.SizeOf(testData);
+
+                // Manual struct serialization to transmit buffer
+                byte[] structBytes = new byte[structSize];
+                GCHandle handle = GCHandle.Alloc(structBytes, GCHandleType.Pinned);
+                try
+                {
+                    Marshal.StructureToPtr(testData, handle.AddrOfPinnedObject(), false);
+                }
+                finally
+                {
+                    handle.Free();
+                }
+
+                // Copy the serialized struct to the transmit buffer
+                for (int i = 0; i < structBytes.Length; i++)
+                {
+                    transfer.Packet.TxBuff[i] = structBytes[i];
+                }
+
+                // Send the packet with ID 2
+                byte bytesSent = transfer.SendData((ushort)structSize, 2);
                 Console.WriteLine($"Sent binary struct ({bytesSent} bytes) with packet ID 2");
                 Console.WriteLine($"Struct contents: ID={testData.Id}, Temp={testData.Temperature}°C, Humidity={testData.Humidity}%, Status={testData.Status}");
+
+                // Wait for response(s)
+                Thread.Sleep(500);
+                ReceiveData(transfer);
             }
             catch (Exception ex)
             {
