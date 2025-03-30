@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\SerialTransfer\SerialTransfer.csproj" />
+    <ProjectReference Include="..\..\src\SerialTransfer\SerialTransfer.NET.csproj" />
   </ItemGroup>
 
 </Project>

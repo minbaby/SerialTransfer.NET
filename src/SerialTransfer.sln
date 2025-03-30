@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.13.35828.75
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SerialTransfer", "SerialTransfer\SerialTransfer.csproj", "{19EC5C81-5F94-459C-991E-37EC9604872A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SerialTransfer.NET", "SerialTransfer\SerialTransfer.NET.csproj", "{19EC5C81-5F94-459C-991E-37EC9604872A}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SerialTransferDemo", "..\samples\SerialTransferDemo\SerialTransferDemo.csproj", "{D3C75F52-C9DA-4CD2-AB55-C9B2BEF6393C}"
 EndProject
